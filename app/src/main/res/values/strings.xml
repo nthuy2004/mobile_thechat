@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">KaiWalker</string>
+    <string name="ok">OK</string>
+    <string name="menu_feed">Trang chủ</string>
+    <string name="menu_record">Ghi lại</string>
+    <string name="menu_me">Bạn</string>
+</resources>
