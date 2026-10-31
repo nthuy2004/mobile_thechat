@@ -37,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.OpenInFull
@@ -64,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -388,12 +390,15 @@ private fun MetricsPanel(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     CompactMetric("Thời gian", formatDuration(state.activeDurationMillis))
                     CompactMetricDivider()
                     CompactMetric(
-                        if (state.workoutType == WorkoutType.CYCLING) "Tốc độ" else "Nhịp độ TB (/${distanceUnitLabel(distanceUnit)})",
+                        if (state.workoutType == WorkoutType.CYCLING)
+                            "Tốc độ (${distanceUnitLabel(distanceUnit)}/h)"
+                        else
+                            "Nhịp độ (/${distanceUnitLabel(distanceUnit)})",
                         if (state.workoutType == WorkoutType.CYCLING)
                             formatSpeed(state.currentSpeedMetersPerSecond ?: state.averageSpeedMetersPerSecond, distanceUnit)
                         else
@@ -502,15 +507,19 @@ private fun RowScope.CompactMetric(label: String, value: String) {
     ) {
         Text(
             text = value,
-            fontSize = 20.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = colors.onSurface
+            color = colors.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = 10.sp,
             color = colors.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -592,7 +601,16 @@ private fun IdleControls(
     var showActivityPicker by remember { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
 
-    Box(modifier = Modifier.fillMaxWidth()) {
+    if (showActivityPicker) {
+        ActivityPicker(
+            selectedType = selectedType,
+            onSelect = {
+                onSelectType(it)
+                showActivityPicker = false
+            },
+            onDismiss = { showActivityPicker = false }
+        )
+    } else {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -636,23 +654,6 @@ private fun IdleControls(
             }
 
             Spacer(modifier = Modifier.size(56.dp))
-        }
-
-        AnimatedVisibility(
-            visible = showActivityPicker,
-            enter = fadeIn(tween(150)) + expandVertically(tween(150), expandFrom = Alignment.Bottom),
-            exit = fadeOut(tween(150)) + shrinkVertically(tween(150), shrinkTowards = Alignment.Bottom),
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 24.dp)
-        ) {
-            ActivityPickerPopup(
-                selectedType = selectedType,
-                onSelect = {
-                    onSelectType(it)
-                    showActivityPicker = false
-                }
-            )
         }
     }
 }
@@ -704,9 +705,10 @@ private fun ActivitySelectorButton(
 }
 
 @Composable
-private fun ActivityPickerPopup(
+private fun ActivityPicker(
     selectedType: WorkoutType,
-    onSelect: (WorkoutType) -> Unit
+    onSelect: (WorkoutType) -> Unit,
+    onDismiss: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
 
@@ -714,50 +716,50 @@ private fun ActivityPickerPopup(
         Triple(WorkoutType.RUNNING, Icons.Default.DirectionsRun, "Chạy bộ"),
         Triple(WorkoutType.CYCLING, Icons.Default.DirectionsBike, "Đạp xe"),
     )
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = colors.surfaceVariant,
-        shadowElevation = 8.dp
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.padding(vertical = 6.dp)) {
-            activities.forEach { (type, icon, label) ->
-                val isSelected = selectedType == type
-                Row(
-                    modifier = Modifier
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onSelect(type) }
-                        .background(
-                            if (isSelected) colors.outlineVariant else colors.surfaceVariant
-                        )
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = label,
-                        tint = if (isSelected) colors.primary else colors.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Text(
-                        text = label,
-                        fontSize = 14.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSelected) colors.onSurface else colors.onSurfaceVariant,
-                        modifier = Modifier.width(80.dp)
-                    )
-                    if (isSelected) {
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .clip(CircleShape)
-                                .background(colors.primary)
-                        )
-                    }
-                }
+        activities.forEach { (type, icon, label) ->
+            val isSelected = selectedType == type
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isSelected) colors.primaryContainer else colors.surfaceVariant)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onSelect(type) }
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = if (isSelected) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = label,
+                    fontSize = 12.sp,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (isSelected) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
+        }
+        IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Đóng chọn hoạt động",
+                tint = colors.onSurfaceVariant
+            )
         }
     }
 }

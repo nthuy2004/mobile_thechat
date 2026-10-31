@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.nth.thechatptit.data.model.Post
 import com.nth.thechatptit.data.model.Workout
 import com.nth.thechatptit.data.model.WorkoutStatistics
+import com.nth.thechatptit.data.model.DailyWorkoutStatistics
 import com.nth.thechatptit.data.model.DistanceUnit
 import com.nth.thechatptit.data.auth.AuthRepository
 import com.nth.thechatptit.data.model.AuthState
@@ -62,11 +63,20 @@ class HomeViewModel @Inject constructor(val navigator: Navigator,
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-            val end = now + 1L
+            }
+            val endOfWeek = (start.clone() as Calendar).apply { add(Calendar.WEEK_OF_YEAR, 1) }
             val userId = (authRepository.state.value as? AuthState.LoggedIn)?.user?.id
             if (userId != null) syncScheduler.enqueueAccountSync(userId)
-            val statistics = workoutRepository.getStatistics(start, end, userId = userId)
+            val statistics = workoutRepository.getStatistics(
+                start.timeInMillis,
+                now + 1L,
+                userId = userId
+            )
+            val dailyStatistics = workoutRepository.getDailyStatistics(
+                start.timeInMillis,
+                endOfWeek.timeInMillis,
+                userId
+            )
             val posts = postRepository.getRecentPosts(userId).take(10).mapNotNull { post ->
                 workoutRepository.getWorkout(post.workoutId)?.let { workout ->
                     HomePost(post, workout)
@@ -75,6 +85,7 @@ class HomeViewModel @Inject constructor(val navigator: Navigator,
             _state.value = HomeUiState(
                 isLoading = false,
                 statistics = statistics,
+                dailyStatistics = dailyStatistics,
                 posts = posts
             )
         }
@@ -84,6 +95,7 @@ class HomeViewModel @Inject constructor(val navigator: Navigator,
 data class HomeUiState(
     val isLoading: Boolean = true,
     val statistics: WorkoutStatistics? = null,
+    val dailyStatistics: List<DailyWorkoutStatistics> = emptyList(),
     val posts: List<HomePost> = emptyList()
 )
 

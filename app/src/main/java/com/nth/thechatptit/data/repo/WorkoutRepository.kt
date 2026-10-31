@@ -4,13 +4,16 @@ import com.nth.thechatptit.data.local.AppDatabase
 import androidx.room.withTransaction
 import com.nth.thechatptit.data.model.TrackPoint
 import com.nth.thechatptit.data.model.Workout
+import com.nth.thechatptit.data.model.WorkoutSegment
 import com.nth.thechatptit.data.model.WorkoutStatus
 import com.nth.thechatptit.data.model.WorkoutVisibility
 import com.nth.thechatptit.data.model.WorkoutType
 import com.nth.thechatptit.data.model.WorkoutStatistics
+import com.nth.thechatptit.data.model.DailyWorkoutStatistics
 import com.nth.thechatptit.data.model.SyncStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,8 +48,44 @@ class WorkoutRepository @Inject constructor(
         )
     }
 
+    suspend fun getDailyStatistics(
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+        userId: String? = null
+    ): List<DailyWorkoutStatistics> = withContext(Dispatchers.IO) {
+        val workouts = database.workoutDao()
+            .getCompletedBetweenForUser(userId, fromEpochMillis, toEpochMillis)
+            .map { it.toDomain() }
+        val grouped = workouts.groupBy { workout ->
+            Calendar.getInstance().apply { timeInMillis = workout.startedAtEpochMillis }
+                .get(Calendar.DAY_OF_WEEK)
+        }
+        val firstDay = Calendar.getInstance().apply {
+            timeInMillis = fromEpochMillis
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        (0..6).map { offset ->
+            val day = (firstDay.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, offset) }
+                .get(Calendar.DAY_OF_WEEK)
+            val dailyWorkouts = grouped[day].orEmpty()
+            DailyWorkoutStatistics(
+                dayOfWeek = day,
+                distanceMeters = dailyWorkouts.sumOf { it.distanceMeters },
+                activeDurationMillis = dailyWorkouts.sumOf { it.activeDurationMillis },
+                workoutCount = dailyWorkouts.size
+            )
+        }
+    }
+
     suspend fun getRoute(workoutId: String): List<TrackPoint> = withContext(Dispatchers.IO) {
         database.trackPointDao().getForWorkout(workoutId).map { it.toDomain() }
+    }
+
+    suspend fun getSegments(workoutId: String): List<WorkoutSegment> = withContext(Dispatchers.IO) {
+        database.workoutSegmentDao().getForWorkout(workoutId).map { it.toDomain() }
     }
 
     suspend fun updateSyncStatus(workoutId: String, status: SyncStatus) = withContext(Dispatchers.IO) {
@@ -169,5 +208,15 @@ class WorkoutRepository @Inject constructor(
         accuracyMeters = accuracyMeters,
         speedMetersPerSecond = speedMetersPerSecond,
         capturedAtEpochMillis = capturedAtEpochMillis
+    )
+
+    private fun com.nth.thechatptit.data.local.WorkoutSegmentEntity.toDomain() = WorkoutSegment(
+        id = id,
+        workoutId = workoutId,
+        sequence = sequence,
+        startedAtEpochMillis = startedAtEpochMillis,
+        finishedAtEpochMillis = finishedAtEpochMillis,
+        durationMillis = durationMillis,
+        distanceMeters = distanceMeters
     )
 }

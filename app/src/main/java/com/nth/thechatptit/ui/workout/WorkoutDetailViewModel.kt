@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nth.thechatptit.data.model.Post
 import com.nth.thechatptit.data.model.TrackPoint
 import com.nth.thechatptit.data.model.Workout
+import com.nth.thechatptit.data.model.WorkoutSegment
 import com.nth.thechatptit.data.model.DistanceUnit
 import com.nth.thechatptit.data.repo.PostRepository
 import com.nth.thechatptit.data.repo.WorkoutRepository
@@ -44,6 +45,7 @@ class WorkoutDetailViewModel @Inject constructor(
                 isLoading = false,
                 workout = workout,
                 route = workoutRepository.getRoute(workoutId),
+                segments = workoutRepository.getSegments(workoutId),
                 post = postRepository.getPostForWorkout(workoutId)
             )
         }
@@ -54,5 +56,6 @@ data class WorkoutDetailUiState(
     val isLoading: Boolean = true,
     val workout: Workout? = null,
     val route: List<TrackPoint> = emptyList(),
+    val segments: List<WorkoutSegment> = emptyList(),
     val post: Post? = null
 )

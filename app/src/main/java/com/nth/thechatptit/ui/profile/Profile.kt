@@ -8,18 +8,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
+import java.util.Calendar
+import java.util.TimeZone
 import androidx.lifecycle.viewModelScope
 import com.nth.thechatptit.data.auth.AuthRepository
 import com.nth.thechatptit.data.model.AppSettings
 import com.nth.thechatptit.data.model.AuthState
+import com.nth.thechatptit.data.model.Goal
+import com.nth.thechatptit.data.model.GoalMetric
+import com.nth.thechatptit.data.model.GoalPeriod
+import com.nth.thechatptit.data.model.GoalProgress
+import com.nth.thechatptit.data.model.GoalReminder
 import com.nth.thechatptit.data.model.DistanceUnit
 import com.nth.thechatptit.data.model.ThemeMode
 import com.nth.thechatptit.data.model.Workout
 import com.nth.thechatptit.data.model.WorkoutStatistics
 import com.nth.thechatptit.data.model.WorkoutType
 import com.nth.thechatptit.data.repo.WorkoutRepository
+import com.nth.thechatptit.data.repo.GoalRepository
 import com.nth.thechatptit.data.settings.SettingsRepository
 import com.nth.thechatptit.data.sync.SyncScheduler
+import com.nth.thechatptit.data.sync.GoalReminderScheduler
 import com.nth.thechatptit.ui.base.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,13 +44,14 @@ class ProfileViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val authRepository: AuthRepository,
     private val syncScheduler: SyncScheduler,
-    private val uploadClient: PhpUploadClient
+    private val uploadClient: PhpUploadClient,
+    private val goalRepository: GoalRepository,
+    private val goalReminderScheduler: GoalReminderScheduler
 ) : BaseViewModel() {
     private val _state = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = _state.asStateFlow()
 
     init {
-        refresh()
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
                 _state.value = _state.value.copy(settings = settings)
@@ -70,7 +80,10 @@ class ProfileViewModel @Inject constructor(
             _state.value = _state.value.copy(isLoading = true)
             val userId = (authRepository.state.value as? AuthState.LoggedIn)?.user?.id
             if (userId != null) syncScheduler.enqueueAccountSync(userId)
+            if (userId != null) goalRepository.claimUnownedForUser(userId)
             val workouts = workoutRepository.getCompletedWorkouts(userId)
+            val goals = goalRepository.getActiveGoals(userId)
+            val progress = goals.associate { goal -> goal.id to goalRepository.getProgress(goal) }
             val total = WorkoutStatistics(
                 fromEpochMillis = 0L,
                 toEpochMillis = System.currentTimeMillis(),
@@ -81,8 +94,52 @@ class ProfileViewModel @Inject constructor(
             _state.value = _state.value.copy(
                 isLoading = false,
                 statistics = total,
-                workouts = workouts
+                workouts = workouts,
+                goals = goals,
+                goalProgress = progress
             )
+        }
+    }
+
+    fun saveGoal(
+        goalId: String?,
+        title: String,
+        metric: GoalMetric,
+        targetValue: Double,
+        reminder: GoalReminder?
+    ) {
+        if (title.isBlank() || targetValue <= 0.0) return
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val existing = goalId?.let { goalRepository.getGoal(it) }
+            val userId = (authRepository.state.value as? AuthState.LoggedIn)?.user?.id
+            val goal = Goal(
+                id = existing?.id ?: UUID.randomUUID().toString(),
+                ownerUserId = userId ?: existing?.ownerUserId,
+                title = title.trim(),
+                metric = metric,
+                workoutType = existing?.workoutType,
+                period = GoalPeriod.WEEKLY,
+                targetValue = targetValue,
+                startDateEpochDay = existing?.startDateEpochDay ?: localEpochDay(now),
+                endDateEpochDay = existing?.endDateEpochDay,
+                reminder = reminder,
+                isActive = true,
+                createdAtEpochMillis = existing?.createdAtEpochMillis ?: now,
+                updatedAtEpochMillis = now
+            )
+            goalRepository.save(goal)
+            if (reminder == null) goalReminderScheduler.cancel(goal.id)
+            else goalReminderScheduler.schedule(goal)
+            refresh()
+        }
+    }
+
+    fun deleteGoal(goalId: String) {
+        viewModelScope.launch {
+            goalReminderScheduler.cancel(goalId)
+            goalRepository.delete(goalId)
+            refresh()
         }
     }
 
@@ -198,12 +255,23 @@ class ProfileViewModel @Inject constructor(
         output
     }.getOrNull()
 
+    private fun localEpochDay(nowEpochMillis: Long): Long {
+        val local = Calendar.getInstance().apply { timeInMillis = nowEpochMillis }
+        val utcDate = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            clear()
+            set(local.get(Calendar.YEAR), local.get(Calendar.MONTH), local.get(Calendar.DAY_OF_MONTH))
+        }
+        return utcDate.timeInMillis / 86_400_000L
+    }
+
 }
 
 data class ProfileUiState(
     val isLoading: Boolean = true,
     val statistics: WorkoutStatistics? = null,
     val workouts: List<Workout> = emptyList(),
+    val goals: List<Goal> = emptyList(),
+    val goalProgress: Map<String, GoalProgress> = emptyMap(),
     val settings: AppSettings = AppSettings(),
     val authState: AuthState = AuthState.LoggedOut,
     val isSavingProfile: Boolean = false,

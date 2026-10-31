@@ -2,16 +2,19 @@ package com.nth.thechatptit.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +27,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +37,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +54,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.nth.thechatptit.data.model.DistanceUnit
+import com.nth.thechatptit.data.model.GoalMetric
 import com.nth.thechatptit.data.model.WorkoutType
 import com.nth.thechatptit.ui.common.distanceInUserUnits
 import com.nth.thechatptit.ui.common.distanceUnitLabel
@@ -71,6 +79,7 @@ fun Home(
     val displayName by viewModel.displayName.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val colors = MaterialTheme.colorScheme
+    var chartMetric by remember { mutableStateOf(GoalMetric.DISTANCE) }
 
     LaunchedEffect(Unit) {
         viewModel.refresh()
@@ -88,13 +97,20 @@ fun Home(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = displayName?.let { "Xin chào, $it" } ?: "Xin chào",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Text("Sẵn sàng cho hoạt động hôm nay?", color = colors.onSurfaceVariant)
+                Text(
+                    text = "Bắt đầu vận động hôm nay?",
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = viewModel::refresh) {
@@ -131,6 +147,16 @@ fun Home(
             WeeklyStats(state, distanceUnit)
         }
 
+        if (!state.isLoading) {
+            Spacer(modifier = Modifier.height(16.dp))
+            WeeklyActivityChart(
+                statistics = state.dailyStatistics,
+                distanceUnit = distanceUnit,
+                selectedMetric = chartMetric,
+                onMetricSelected = { chartMetric = it }
+            )
+        }
+
         Spacer(modifier = Modifier.height(28.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -154,6 +180,125 @@ fun Home(
         }
         Spacer(modifier = Modifier.height(12.dp))
     }
+}
+
+@Composable
+private fun WeeklyActivityChart(
+    statistics: List<com.nth.thechatptit.data.model.DailyWorkoutStatistics>,
+    distanceUnit: DistanceUnit,
+    selectedMetric: GoalMetric,
+    onMetricSelected: (GoalMetric) -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    val maxValue = statistics.maxOfOrNull { it.valueFor(selectedMetric) }?.coerceAtLeast(1.0) ?: 1.0
+    val title = when (selectedMetric) {
+        GoalMetric.DISTANCE -> "Quãng đường theo ngày"
+        GoalMetric.ACTIVE_DURATION -> "Thời gian theo ngày"
+        GoalMetric.WORKOUT_COUNT -> "Số buổi theo ngày"
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = colors.surfaceVariant
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    GoalMetric.DISTANCE to "Quãng đường",
+                    GoalMetric.ACTIVE_DURATION to "Thời gian",
+                    GoalMetric.WORKOUT_COUNT to "Số buổi"
+                ).forEach { (metric, label) ->
+                    FilterChip(
+                        selected = selectedMetric == metric,
+                        onClick = { onMetricSelected(metric) },
+                        label = { Text(label, maxLines = 1) }
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                statistics.forEach { day ->
+                    val value = day.valueFor(selectedMetric)
+                    val barHeight = if (value <= 0.0) 0f else (value / maxValue).toFloat().coerceIn(0.06f, 1f)
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = dayLabelValue(day, selectedMetric, distanceUnit),
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                            color = colors.onSurfaceVariant
+                        )
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(76.dp),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            if (barHeight > 0f) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(18.dp)
+                                        .fillMaxHeight(barHeight)
+                                        .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
+                                        .background(colors.primary)
+                                )
+                            }
+                        }
+                        Text(
+                            text = dayShortName(day.dayOfWeek),
+                            fontSize = 10.sp,
+                            color = colors.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun com.nth.thechatptit.data.model.DailyWorkoutStatistics.valueFor(metric: GoalMetric): Double =
+    when (metric) {
+        GoalMetric.DISTANCE -> distanceMeters
+        GoalMetric.ACTIVE_DURATION -> activeDurationMillis.toDouble()
+        GoalMetric.WORKOUT_COUNT -> workoutCount.toDouble()
+    }
+
+private fun dayLabelValue(
+    day: com.nth.thechatptit.data.model.DailyWorkoutStatistics,
+    metric: GoalMetric,
+    distanceUnit: DistanceUnit
+): String = when (metric) {
+    GoalMetric.DISTANCE -> String.format(
+        Locale.US,
+        "%.1f",
+        distanceInUserUnits(day.distanceMeters, distanceUnit)
+    )
+    GoalMetric.ACTIVE_DURATION -> {
+        val minutes = day.activeDurationMillis / 60_000
+        if (minutes >= 60) "${minutes / 60}h" else "${minutes}m"
+    }
+    GoalMetric.WORKOUT_COUNT -> day.workoutCount.toString()
+}
+
+private fun dayShortName(dayOfWeek: Int): String = when (dayOfWeek) {
+    java.util.Calendar.MONDAY -> "T2"
+    java.util.Calendar.TUESDAY -> "T3"
+    java.util.Calendar.WEDNESDAY -> "T4"
+    java.util.Calendar.THURSDAY -> "T5"
+    java.util.Calendar.FRIDAY -> "T6"
+    java.util.Calendar.SATURDAY -> "T7"
+    else -> "CN"
 }
 @Composable
 private fun WeeklyStats(state: HomeUiState, distanceUnit: DistanceUnit) {

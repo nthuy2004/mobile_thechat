@@ -10,9 +10,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WorkoutEntity::class,
         WorkoutSegmentEntity::class,
         TrackPointEntity::class,
-        PostEntity::class
+        PostEntity::class,
+        GoalEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -20,6 +21,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun workoutSegmentDao(): WorkoutSegmentDao
     abstract fun trackPointDao(): TrackPointDao
     abstract fun postDao(): PostDao
+    abstract fun goalDao(): GoalDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -38,6 +40,31 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_posts_workoutId` ON `posts` (`workoutId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_posts_createdAtEpochMillis` ON `posts` (`createdAtEpochMillis`)")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `goals` (" +
+                        "`id` TEXT NOT NULL PRIMARY KEY, " +
+                        "`ownerUserId` TEXT, " +
+                        "`title` TEXT NOT NULL, " +
+                        "`metric` TEXT NOT NULL, " +
+                        "`workoutType` TEXT, " +
+                        "`period` TEXT NOT NULL, " +
+                        "`targetValue` REAL NOT NULL, " +
+                        "`startDateEpochDay` INTEGER NOT NULL, " +
+                        "`endDateEpochDay` INTEGER, " +
+                        "`reminderMinutesOfDay` INTEGER, " +
+                        "`reminderTimeZoneId` TEXT, " +
+                        "`reminderDaysOfWeekMask` INTEGER, " +
+                        "`isActive` INTEGER NOT NULL, " +
+                        "`createdAtEpochMillis` INTEGER NOT NULL, " +
+                        "`updatedAtEpochMillis` INTEGER NOT NULL)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_goals_ownerUserId` ON `goals` (`ownerUserId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_goals_isActive` ON `goals` (`isActive`)")
             }
         }
     }

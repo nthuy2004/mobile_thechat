@@ -50,6 +50,7 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.nth.thechatptit.data.model.Workout
+import com.nth.thechatptit.data.model.WorkoutSegment
 import com.nth.thechatptit.data.model.WorkoutType
 import com.nth.thechatptit.data.model.WorkoutVisibility
 import com.nth.thechatptit.data.model.DistanceUnit
@@ -131,8 +132,37 @@ fun WorkoutDetail(
             ActivityHeading(workout)
             Spacer(modifier = Modifier.height(18.dp))
             DetailMetrics(workout, distanceUnit)
+            if (state.segments.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(18.dp))
+                SegmentList(state.segments, distanceUnit)
+            }
             Spacer(modifier = Modifier.height(18.dp))
             DetailInfo(workout, state.post?.caption)
+        }
+    }
+}
+
+@Composable
+private fun SegmentList(segments: List<WorkoutSegment>, distanceUnit: DistanceUnit) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = colors.surfaceVariant,
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Đoạn hoạt động", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            segments.forEach { segment ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Đoạn ${segment.sequence + 1}", color = colors.onSurfaceVariant)
+                    Text(formatDistance(segment.distanceMeters, distanceUnit), fontWeight = FontWeight.Medium)
+                    Text(formatDuration(segment.durationMillis), color = colors.onSurfaceVariant)
+                }
+            }
         }
     }
 }

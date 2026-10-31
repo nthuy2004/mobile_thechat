@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -143,7 +144,7 @@ fun Summary(
                 value = message,
                 onValueChange = { message = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Message") },
+                label = { Text("Ghi chú") },
                 placeholder = { Text("Cảm nhận về hoạt động") },
                 minLines = 3
             )
@@ -319,7 +320,7 @@ private fun WorkoutInfo(workout: Workout, locationName: String, distanceUnit: Di
                 value = formatDistance(workout.distanceMeters, distanceUnit)
             )
             SummaryMetric(
-                label = if (workout.type == WorkoutType.CYCLING) "Tốc độ TB" else "Pace TB",
+                label = if (workout.type == WorkoutType.CYCLING) "Tốc độ TB" else "Nhịp độ TB",
                 value = if (workout.type == WorkoutType.CYCLING) {
                     formatSpeed(workout.averageSpeedMetersPerSecond, distanceUnit)
                 } else {
@@ -424,21 +425,24 @@ private fun VisibilityPicker(
     Column {
         Text("Chế độ hiển thị", fontSize = 14.sp, fontWeight = FontWeight.Medium)
         Spacer(modifier = Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             FilterChip(
                 selected = selected == WorkoutVisibility.PRIVATE,
                 onClick = { onSelect(WorkoutVisibility.PRIVATE) },
-                label = { Text("Riêng tư") }
+                label = { Text("Riêng tư", fontSize = 12.sp, maxLines = 1) }
             )
             FilterChip(
                 selected = selected == WorkoutVisibility.FOLLOWERS,
                 onClick = { onSelect(WorkoutVisibility.FOLLOWERS) },
-                label = { Text("Người theo dõi") }
+                label = { Text("Người theo dõi", fontSize = 12.sp, maxLines = 1) }
             )
             FilterChip(
                 selected = selected == WorkoutVisibility.PUBLIC,
                 onClick = { onSelect(WorkoutVisibility.PUBLIC) },
-                label = { Text("Công khai") }
+                label = { Text("Công khai", fontSize = 12.sp, maxLines = 1) }
             )
         }
     }

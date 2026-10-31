@@ -36,3 +36,12 @@ data class WorkoutStatistics(
             null
         }
 }
+
+/** One weekday's totals for a compact weekly chart. */
+data class DailyWorkoutStatistics(
+    /** Calendar.DAY_OF_WEEK value for this bucket. */
+    val dayOfWeek: Int,
+    val distanceMeters: Double,
+    val activeDurationMillis: Long,
+    val workoutCount: Int
+)

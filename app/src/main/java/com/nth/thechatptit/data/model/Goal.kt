@@ -20,7 +20,10 @@ data class GoalReminder(
     val minutesOfDay: Int,
 
     /** Mui gio IANA, vi du Asia/Bangkok, dung de dat lich dung gio dia phuong. */
-    val timeZoneId: String
+    val timeZoneId: String,
+
+    /** Bit 0..6 lan luot dai dien thu Hai den Chu Nhat. */
+    val daysOfWeekMask: Int = 0b0010101
 )
 
 /** Muc tieu van dong cua nguoi dung. */

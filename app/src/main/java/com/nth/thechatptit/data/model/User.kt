@@ -14,9 +14,6 @@ data class User(
     /** Dia chi anh dai dien; null khi nguoi dung chua dat anh. */
     val avatarUrl: String? = null,
 
-    /** Gioi thieu ngan tren trang ca nhan. */
-    val bio: String? = null,
-
     /** Thoi diem tai khoan duoc tao, tinh bang epoch millisecond. */
     val createdAtEpochMillis: Long,
 

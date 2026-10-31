@@ -42,6 +42,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,7 +52,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,6 +90,15 @@ fun Profile(
         uri?.let(viewModel::updateAvatar)
     }
     val currentUser = (state.authState as? AuthState.LoggedIn)?.user
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refresh()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Column(
         modifier = modifier
@@ -142,6 +156,14 @@ fun Profile(
             }
         } else {
             ProfileStats(state, state.settings.distanceUnit)
+            Spacer(Modifier.height(26.dp))
+            GoalsSection(
+                goals = state.goals,
+                progressByGoalId = state.goalProgress,
+                distanceUnit = state.settings.distanceUnit,
+                onSaveGoal = viewModel::saveGoal,
+                onDeleteGoal = viewModel::deleteGoal
+            )
             Spacer(Modifier.height(26.dp))
             HistorySection(state.workouts, state.settings.distanceUnit, onWorkoutClick)
         }
@@ -224,11 +246,22 @@ private fun ProfileHeader(
                 }
             }
             Spacer(Modifier.size(14.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 when (authState) {
                     is AuthState.LoggedIn -> {
-                        Text(authState.user.displayName, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        Text(authState.user.email, color = colors.onSurfaceVariant)
+                        Text(
+                            text = authState.user.displayName,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = authState.user.email,
+                            color = colors.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         TextButton(onClick = onEdit) {
                             Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.size(6.dp))
