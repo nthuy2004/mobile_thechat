@@ -1,6 +1,8 @@
 package com.nth.thechatptit.ui.splash
 
-import android.util.Log
+import com.nth.thechatptit.data.auth.AuthRepository
+import com.nth.thechatptit.data.model.AuthState
+import com.nth.thechatptit.data.sync.SyncScheduler
 import androidx.lifecycle.viewModelScope
 import com.nth.thechatptit.ui.base.BaseViewModel
 import com.nth.thechatptit.ui.common.snackbar.Messenger
@@ -13,7 +15,9 @@ import javax.inject.Inject
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     val navigator: Navigator,
-    val messenger: Messenger
+    val messenger: Messenger,
+    private val authRepository: AuthRepository,
+    private val syncScheduler: SyncScheduler
 ) : BaseViewModel() {
     companion object {
         const val TAG = "SplashViewModel"
@@ -21,8 +25,20 @@ class SplashViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            Log.d(TAG, "Hello world")
-            navigator.navigateTo(Routes.Home.route, true)
+            authRepository.restore()
+            val route = when (val state = authRepository.state.value) {
+                is AuthState.LoggedIn -> {
+                    syncScheduler.enqueueAccountSync(state.user.id)
+                    Routes.Home.route
+                }
+                AuthState.LoggedOut -> if (authRepository.isConfigured) {
+                    Routes.Login.route
+                } else {
+                    Routes.Home.route
+                }
+                AuthState.Restoring -> Routes.Home.route
+            }
+            navigator.navigateTo(route, true)
         }
     }
 }

@@ -46,6 +46,8 @@ data class TrackingState(
     /** Diem GPS hop le gan nhat; null khi chua bat duoc vi tri. */
     val currentPoint: TrackPoint? = null,
 
+    val currentSpeedMetersPerSecond: Double? = null,
+
     /** Trang thai tin hieu GPS de UI hien thi cho nguoi dung. */
     val gpsStatus: GpsStatus = GpsStatus.UNKNOWN,
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "208102574189",
+    "project_id": "walker-19641",
+    "storage_bucket": "walker-19641.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:208102574189:android:08499be3209d7807511764",
+        "android_client_info": {
+          "package_name": "com.nth.thechatptit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2GWDz823DDpisoMyVKJLP7a1iMzD1zM4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

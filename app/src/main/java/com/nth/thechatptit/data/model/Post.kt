@@ -6,7 +6,7 @@ data class Post(
     val id: String,
 
     /** ID nguoi tao bai dang. */
-    val authorUserId: String,
+    val authorUserId: String?,
 
     /** ID workout duoc chia se trong bai dang. */
     val workoutId: String,

@@ -28,8 +28,8 @@ fun AppSnackbar(
         Snackbar(
             snackbarData = it,
             containerColor = color,
-            contentColor = MaterialTheme.colorScheme.black,
-            actionColor = MaterialTheme.colorScheme.black
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            actionColor = MaterialTheme.colorScheme.onPrimary
         )
     }
 }

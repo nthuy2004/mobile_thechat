@@ -25,8 +25,6 @@ data class AppSettings(
     val defaultWorkoutType: WorkoutType = WorkoutType.RUNNING,
 
     /** Cho phep tu dong pause khi phat hien nguoi dung dung yen. */
-    val autoPauseEnabled: Boolean = false,
+    val autoPauseEnabled: Boolean = false
 
-    /** Cho phep gui notification nhac muc tieu. */
-    val goalNotificationsEnabled: Boolean = true
 )

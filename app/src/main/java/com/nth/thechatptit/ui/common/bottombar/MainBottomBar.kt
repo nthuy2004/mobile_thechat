@@ -1,24 +1,26 @@
 package com.nth.thechatptit.ui.common.bottombar
 
-import androidx.annotation.DrawableRes
 import androidx.annotation.Keep
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.add
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.nth.thechatptit.R
@@ -28,26 +30,26 @@ import com.nth.thechatptit.ui.theme.AppTheme
 @Keep
 enum class MainTab(
     @StringRes val title: Int,
-    @DrawableRes val unselectedIcon: Int,
-    @DrawableRes val selectedIcon: Int,
+    val unselectedIcon: ImageVector,
+    val selectedIcon: ImageVector,
     val route: String,
 ) {
     HOME(
         R.string.menu_feed,
-        R.drawable.ic_feed,
-        R.drawable.ic_feed,
+        Icons.Outlined.Home,
+        Icons.Filled.Home,
         Routes.Home.route,
     ),
     RECORD(
         R.string.menu_record,
-        R.drawable.ic_feed,
-        R.drawable.ic_feed,
-        Routes.Map.route,
+        Icons.AutoMirrored.Outlined.DirectionsRun,
+        Icons.AutoMirrored.Filled.DirectionsRun,
+        Routes.Record.route,
     ),
     PROFILE(
         R.string.menu_me,
-        R.drawable.ic_feed,
-        R.drawable.ic_feed,
+        Icons.Outlined.Person,
+        Icons.Filled.Person,
         Routes.Profile.route
     ),
 }
@@ -60,6 +62,8 @@ fun MainBottomBar(navController: NavController, onTabSelected: (String) -> Unit 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
         ?: Routes.Home.route
+
+    if (currentRoute == Routes.Record.route) return
 
     MainBottomBarView(
         tabs = tabs,
@@ -90,10 +94,6 @@ private fun MainBottomBarView(
 
     if (currentRoute in routes) {
         NavigationBar(
-            Modifier
-                .windowInsetsBottomHeight(
-                    WindowInsets.navigationBars.add(WindowInsets(bottom = 56.dp))
-                ),
             tonalElevation = 4.dp
         ) {
             tabs.forEach { tab ->
@@ -101,15 +101,14 @@ private fun MainBottomBarView(
                 NavigationBarItem(
                     icon = {
                         Icon(
-                            painterResource(if (selected) tab.selectedIcon else tab.unselectedIcon),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
+                            contentDescription = stringResource(tab.title),
                         )
                     },
                     selected = selected,
                     onClick = { tabClick(tab) },
-                    alwaysShowLabel = false,
-                    modifier = Modifier.navigationBarsPadding(),
+                    label = { Text(stringResource(tab.title)) },
+                    alwaysShowLabel = true,
                 )
             }
         }
@@ -131,7 +130,7 @@ private fun HomeBottomBarLightPreview() {
 @Preview("Dark")
 @Composable
 private fun HomeBottomBarDarkPreview() {
-    AppTheme(dark = true) {
+    AppTheme {
         MainBottomBarView(
             tabs = MainTab.entries.toTypedArray().asList(),
             routes = MainTab.entries.map { it.route },

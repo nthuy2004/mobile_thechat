@@ -53,6 +53,10 @@ data class Workout(
     /** Tong thoi gian tam dung cua buoi tap. */
     val pausedDurationMillis: Long = 0L,
 
+    val activeStartedAtEpochMillis: Long? = null,
+
+    val pauseStartedAtEpochMillis: Long? = null,
+
     /** Tong quang duong hop le, luu bang met. */
     val distanceMeters: Double = 0.0,
 
